@@ -83,6 +83,20 @@ Runs on `http://localhost:5173` (proxies `/api`, `/uploads`, `/signed` to the ba
 | GET | `/api/signatures/:documentId` | List signature fields |
 | PUT | `/api/signatures/:id/sign` | Sign or reject a field |
 | POST | `/api/signatures/finalize` | Generate final signed PDF |
+
+
+<img width="1348" height="634" alt="111" src="https://github.com/user-attachments/assets/a75b7539-1a2b-4d4f-989e-64747fb5c859" />
+<img width="1351" height="645" alt="222" src="https://github.com/user-attachments/assets/e4a3f6d2-d9d3-4a1f-88e8-f22492ffa54a" />
+<img width="1361" height="629" alt="333" src="https://github.com/user-attachments/assets/f7cc4431-2701-4701-bb72-147a0f7befd5" />
+<img width="1335" height="634" alt="444" src="https://github.com/user-attachments/assets/84a6bc7a-22a5-4911-b258-81c2256f5d91" />
+<img width="1341" height="630" alt="555" src="https://github.com/user-attachments/assets/4bdebc84-a4b3-4ce8-8f4d-9c3fc62fd5a4" />
+<img width="1333" height="625" alt="666" src="https://github.com/user-attachments/assets/6119d821-fc7c-4605-b729-59cc3863b844" />
+
+
+
+
+
+
 | GET | `/api/audit/:fileId` | Get audit trail |
 
 ## Notes
