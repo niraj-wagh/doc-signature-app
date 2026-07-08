@@ -1,8 +1,13 @@
 import axios from 'axios';
 
+const API_BASE = 'https://YOUR_RENDER_URL.onrender.com/api';
+const ROOT_BASE = 'https://YOUR_RENDER_URL.onrender.com';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
 });
+
+export const getFileUrl = (path) => `${ROOT_BASE}${path}`;
 
 // Attach access token to every request
 api.interceptors.request.use((config) => {
@@ -38,7 +43,7 @@ api.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        const { data } = await axios.post('/api/auth/refresh', { refreshToken });
+        const { data } = await axios.post(`${ROOT_BASE}/api/auth/refresh`, { refreshToken });
         localStorage.setItem('accessToken', data.accessToken);
 
         refreshQueue.forEach(({ resolve, originalRequest: queuedReq }) => {
