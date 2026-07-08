@@ -17,12 +17,12 @@ router.post('/upload', authMiddleware, upload.single('file'), async (req, res) =
       return res.status(400).json({ message: 'No file uploaded or invalid file type' });
     }
 
-    const document = await Document.create({
-      owner: req.user.id,
-      originalName: req.file.originalname,
-      filePath: req.file.filename,
-      status: 'Pending',
-    });
+  const document = await Document.create({
+  owner: req.user.id,
+  originalName: req.file.originalname,
+  filePath: req.file.path, // Cloudinary returns full URL in req.file.path
+  status: 'Pending',
+});
 
     await logAction({
       documentId: document._id,
