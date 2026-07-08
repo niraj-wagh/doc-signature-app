@@ -1,3 +1,4 @@
+// SignFlow API client - v2
 import axios from 'axios';
 
 const API_BASE = 'https://doc-signature-app-backend.onrender.com/api';
@@ -9,7 +10,6 @@ const api = axios.create({
 
 export const getFileUrl = (path) => `${ROOT_BASE}${path}`;
 
-// Attach access token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
@@ -18,7 +18,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Handle 401s by attempting a token refresh once
 let isRefreshing = false;
 let refreshQueue = [];
 
