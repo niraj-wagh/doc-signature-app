@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "https://doc-signature-app-backend.onrender.com/api/:path*"
+    }
+  ]
+}
