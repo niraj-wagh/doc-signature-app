@@ -85,7 +85,7 @@ export default function PublicSign() {
   };
 
   const pageSignatures = signatures.filter((s) => s.page === pageNumber);
-  const fileUrl = document_ ? `/uploads/${document_.filePath}` : null;
+  const fileUrl = document_ ? document_.filePath : null;
   const allSigned = signatures.length > 0 && signatures.every((s) => s.status === 'Signed');
 
   if (loading) return <div className="flex items-center justify-center h-screen text-gray-500">Loading...</div>;
