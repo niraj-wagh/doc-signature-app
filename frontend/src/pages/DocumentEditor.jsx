@@ -19,6 +19,7 @@ export default function DocumentEditor() {
   const [activeSignature, setActiveSignature] = useState(null); // signature being signed
   const [finalizing, setFinalizing] = useState(false);
   const [message, setMessage] = useState('');
+  
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -40,7 +41,7 @@ export default function DocumentEditor() {
     fetchData();
   }, [fetchData]);
 
-  const fileUrl = document_ ? `/uploads/${document_.filePath}` : null;
+ const fileUrl = document_ ? document_.filePath : null;
 
   // Signature fields are always pinned to the bottom signing strip of the page.
   // Only horizontal slot (left / center / right) is configurable, matching how
