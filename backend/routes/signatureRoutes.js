@@ -216,13 +216,13 @@ router.post('/finalize', authMiddleware, async (req, res) => {
 
     // Upload signed PDF to Cloudinary
     const uploadResult = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'doc-signature-app/signed',
-          resource_type: 'raw',
-          format: 'pdf',
-          public_id: `signed-${documentId}-${Date.now()}`,
-        },
+     const stream = cloudinary.uploader.upload_stream(
+  {
+    folder: 'doc-signature-app/signed',
+    resource_type: 'raw',
+    format: 'pdf',
+    public_id: `signed-${documentId}-${Date.now()}`,
+  },
         (error, result) => {
           if (error) reject(error);
           else resolve(result);
