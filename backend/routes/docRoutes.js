@@ -158,29 +158,30 @@ router.get('/public/:token', async (req, res) => {
   }
 });
 
-// GET /api/docs/:id/file - Proxy PDF from Cloudinary to avoid CORS
+// GET /api/docs/proxy/:id - Proxy PDF from Cloudinary
 router.get('/proxy/:id', async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
     if (!document) return res.status(404).json({ message: 'Document not found' });
 
-    if (document.owner.toString() !== req.user.id) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
-    const https = require('https');
-    const http = require('http');
-    const client = document.filePath.startsWith('https') ? https : http;
+    const fileUrl = decodeURIComponent(document.filePath);
 
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
 
-    client.get(document.filePath, (pdfStream) => {
+    const https = require('https');
+    https.get(fileUrl, (pdfStream) => {
+      if (pdfStream.statusCode !== 200) {
+        return res.status(502).json({ message: `Cloudinary returned ${pdfStream.statusCode}` });
+      }
       pdfStream.pipe(res);
     }).on('error', (err) => {
+      console.error('Proxy fetch error:', err.message);
       res.status(500).json({ message: 'Failed to fetch PDF', error: err.message });
     });
   } catch (err) {
+    console.error('Proxy route error:', err.message);
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
