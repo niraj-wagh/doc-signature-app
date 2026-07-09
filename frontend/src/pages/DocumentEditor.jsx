@@ -41,10 +41,10 @@ export default function DocumentEditor() {
   }, [fetchData]);
 
   // filePath is now a full Cloudinary URL — use it directly
-  const fileUrl = document_ 
-  ? `https://doc-signature-app-backend.onrender.com/api/docs/${id}/file`
+const fileUrl = document_
+  ? `https://doc-signature-app-backend.onrender.com/api/docs/proxy/${id}`
   : null;
-
+  
   const BOTTOM_Y_PERCENT = 0.86;
   const FIELD_WIDTH = 0.26;
   const FIELD_HEIGHT = 0.07;
