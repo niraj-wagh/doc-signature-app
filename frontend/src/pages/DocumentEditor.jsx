@@ -129,7 +129,18 @@ const fileUrl = document_
     const viewport = page.getViewport({ scale: 1 });
     const containerWidth = 700;
     const scale = containerWidth / viewport.width;
-    setPageSize({ width: viewport.width * scale, height: viewport.height * scale });
+    const newWidth = viewport.width * scale;
+    const newHeight = viewport.height * scale;
+
+    // Only update state if the size actually changed — otherwise this fires
+    // on every render success, re-renders the parent, remounts the <Page>,
+    // and fires onRenderSuccess again, causing an infinite blink loop.
+    setPageSize((prev) => {
+      if (Math.abs(prev.width - newWidth) < 0.5 && Math.abs(prev.height - newHeight) < 0.5) {
+        return prev;
+      }
+      return { width: newWidth, height: newHeight };
+    });
   };
 
   const pageSignatures = signatures.filter((s) => s.page === pageNumber);
