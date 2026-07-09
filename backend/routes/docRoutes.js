@@ -158,4 +158,31 @@ router.get('/public/:token', async (req, res) => {
   }
 });
 
+// GET /api/docs/:id/file - Proxy PDF from Cloudinary to avoid CORS
+router.get('/:id/file', authMiddleware, async (req, res) => {
+  try {
+    const document = await Document.findById(req.params.id);
+    if (!document) return res.status(404).json({ message: 'Document not found' });
+
+    if (document.owner.toString() !== req.user.id) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const https = require('https');
+    const http = require('http');
+    const client = document.filePath.startsWith('https') ? https : http;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    client.get(document.filePath, (pdfStream) => {
+      pdfStream.pipe(res);
+    }).on('error', (err) => {
+      res.status(500).json({ message: 'Failed to fetch PDF', error: err.message });
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+});
+
 module.exports = router;
