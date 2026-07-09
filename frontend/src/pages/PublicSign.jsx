@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { DndContext } from '@dnd-kit/core';
-import axios from 'axios';
+import api from '../api/axios';
 import PDFViewer from '../components/PDFViewer';
 import SignatureField from '../components/SignatureField';
 import SignaturePad from '../components/SignaturePad';
@@ -24,10 +24,9 @@ export default function PublicSign() {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await axios.get(`/api/docs/public/${token}`);
+        const { data } = await api.get(`/docs/public/${token}`);
         setDocument(data.document);
-
-        const sigRes = await axios.get(`/api/signatures/${data.document._id}`);
+        const sigRes = await api.get(`/signatures/${data.document._id}`);
         setSignatures(sigRes.data.signatures);
       } catch (err) {
         setError(err.response?.data?.message || 'This signing link is invalid or expired');
@@ -49,7 +48,7 @@ export default function PublicSign() {
 
   const handleSaveSignature = async ({ signatureText, signatureImage }) => {
     try {
-      const { data } = await axios.put(`/api/signatures/${activeSignature._id}/sign`, {
+      const { data } = await api.put(`/signatures/${activeSignature._id}/sign`, {
         signatureText,
         signatureImage,
         signerName,
@@ -69,8 +68,7 @@ export default function PublicSign() {
     try {
       const targetSig = signatures.find((s) => s.status !== 'Signed');
       if (!targetSig) return;
-
-      const { data } = await axios.put(`/api/signatures/${targetSig._id}/sign`, {
+      const { data } = await api.put(`/signatures/${targetSig._id}/sign`, {
         action: 'reject',
         reason: rejectReason,
         signerEmail,
@@ -85,6 +83,7 @@ export default function PublicSign() {
   };
 
   const pageSignatures = signatures.filter((s) => s.page === pageNumber);
+  // filePath is now a full Cloudinary URL
   const fileUrl = document_ ? document_.filePath : null;
   const allSigned = signatures.length > 0 && signatures.every((s) => s.status === 'Signed');
 
@@ -110,61 +109,31 @@ export default function PublicSign() {
       {message && <div className="bg-green-50 text-green-700 text-sm rounded-lg px-3 py-2 mb-3">{message}</div>}
 
       {document_.status === 'Rejected' ? (
-        <div className="card text-center">
-          <p className="text-red-600 font-medium">This document has been rejected.</p>
-        </div>
+        <div className="card text-center"><p className="text-red-600 font-medium">This document has been rejected.</p></div>
       ) : allSigned ? (
-        <div className="card text-center">
-          <p className="text-green-600 font-medium">This document has been fully signed. Thank you!</p>
-        </div>
+        <div className="card text-center"><p className="text-green-600 font-medium">This document has been fully signed. Thank you!</p></div>
       ) : (
         <>
           <div className="card mb-4 grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium mb-1">Your Name</label>
-              <input
-                type="text"
-                value={signerName}
-                onChange={(e) => setSignerName(e.target.value)}
-                className="input-field"
-                placeholder="Full name"
-              />
+              <input type="text" value={signerName} onChange={(e) => setSignerName(e.target.value)} className="input-field" placeholder="Full name" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Your Email (optional)</label>
-              <input
-                type="email"
-                value={signerEmail}
-                onChange={(e) => setSignerEmail(e.target.value)}
-                className="input-field"
-                placeholder="you@example.com"
-              />
+              <input type="email" value={signerEmail} onChange={(e) => setSignerEmail(e.target.value)} className="input-field" placeholder="you@example.com" />
             </div>
           </div>
 
           {numPages > 1 && (
             <div className="flex items-center gap-2 mb-3">
-              <button
-                disabled={pageNumber <= 1}
-                onClick={() => setPageNumber((p) => p - 1)}
-                className="btn-secondary text-sm disabled:opacity-50"
-              >
-                Prev
-              </button>
-              <span className="text-sm">
-                Page {pageNumber} of {numPages}
-              </span>
-              <button
-                disabled={pageNumber >= numPages}
-                onClick={() => setPageNumber((p) => p + 1)}
-                className="btn-secondary text-sm disabled:opacity-50"
-              >
-                Next
-              </button>
+              <button disabled={pageNumber <= 1} onClick={() => setPageNumber((p) => p - 1)} className="btn-secondary text-sm disabled:opacity-50">Prev</button>
+              <span className="text-sm">Page {pageNumber} of {numPages}</span>
+              <button disabled={pageNumber >= numPages} onClick={() => setPageNumber((p) => p + 1)} className="btn-secondary text-sm disabled:opacity-50">Next</button>
             </div>
           )}
 
-       <DndContext>
+          <DndContext>
             <PDFViewer fileUrl={fileUrl} pageNumber={pageNumber} setNumPages={setNumPages}>
               {pageSignatures.length > 0 && (
                 <div
@@ -184,7 +153,7 @@ export default function PublicSign() {
                   yPercent={sig.yPercent}
                   widthPercent={sig.widthPercent}
                   heightPercent={sig.heightPercent}
-                  label={sig.status === 'Signed' ? `✓ Signed` : 'Tap to sign'}
+                  label={sig.status === 'Signed' ? '✓ Signed' : 'Tap to sign'}
                   status={sig.status}
                 />
               ))}
@@ -192,26 +161,11 @@ export default function PublicSign() {
           </DndContext>
 
           <div className="flex flex-wrap gap-2 mt-4 justify-center">
-            {pageSignatures
-              .filter((s) => s.status !== 'Signed')
-              .map((sig) => (
-                <button key={sig._id} onClick={() => handleSign(sig)} className="btn-primary">
-                  Sign at bottom of page {sig.page}
-                </button>
-              ))}
-            <button onClick={() => setShowRejectModal(true)} className="btn-secondary text-red-600">
-              Reject Document
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2 mt-4 justify-center">
-            {pageSignatures
-              .filter((s) => s.status !== 'Signed')
-              .map((sig) => (
-                <button key={sig._id} onClick={() => handleSign(sig)} className="btn-primary">
-                  Sign Field on Page {sig.page}
-                </button>
-              ))}
+            {pageSignatures.filter((s) => s.status !== 'Signed').map((sig) => (
+              <button key={sig._id} onClick={() => handleSign(sig)} className="btn-primary">
+                Sign at bottom of page {sig.page}
+              </button>
+            ))}
             <button onClick={() => setShowRejectModal(true)} className="btn-secondary text-red-600">
               Reject Document
             </button>
@@ -229,20 +183,10 @@ export default function PublicSign() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="card w-full max-w-md">
             <h3 className="font-semibold mb-2">Reject Document</h3>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              className="input-field"
-              rows={3}
-              placeholder="Reason for rejection (optional)"
-            />
+            <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} className="input-field" rows={3} placeholder="Reason for rejection (optional)" />
             <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowRejectModal(false)} className="btn-secondary">
-                Cancel
-              </button>
-              <button onClick={handleReject} className="btn-primary bg-red-600 hover:bg-red-700">
-                Confirm Rejection
-              </button>
+              <button onClick={() => setShowRejectModal(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleReject} className="btn-primary bg-red-600 hover:bg-red-700">Confirm Rejection</button>
             </div>
           </div>
         </div>
