@@ -1,6 +1,4 @@
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
 const Document = require('../models/Document');
 const Signature = require('../models/Signature');
@@ -10,26 +8,27 @@ const { logAction } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
-// POST /api/docs/upload  - Upload a PDF
+// POST /api/docs/upload  - Upload a PDF to Cloudinary
 router.post('/upload', authMiddleware, upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'No file uploaded or invalid file type' });
     }
 
-  const document = await Document.create({
-  owner: req.user.id,
-  originalName: req.file.originalname,
-  filePath: req.file.path, // Cloudinary returns full URL in req.file.path
-  status: 'Pending',
-});
+    // Cloudinary returns the full hosted URL in req.file.path
+    const document = await Document.create({
+      owner: req.user.id,
+      originalName: req.file.originalname,
+      filePath: req.file.path, // full Cloudinary URL
+      status: 'Pending',
+    });
 
     await logAction({
       documentId: document._id,
       action: 'uploaded',
       actor: req.user.email,
       req,
-      details: { originalName: req.file.originalname },
+      details: { originalName: req.file.originalname, cloudinaryUrl: req.file.path },
     });
 
     res.status(201).json({ message: 'File uploaded successfully', document });
@@ -87,15 +86,6 @@ router.delete('/:id', authMiddleware, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    // Remove physical files
-    const uploadPath = path.join(__dirname, '..', 'uploads', document.filePath);
-    if (fs.existsSync(uploadPath)) fs.unlinkSync(uploadPath);
-
-    if (document.signedFilePath) {
-      const signedPath = path.join(__dirname, '..', 'signed', document.signedFilePath);
-      if (fs.existsSync(signedPath)) fs.unlinkSync(signedPath);
-    }
-
     await Signature.deleteMany({ documentId: document._id });
     await document.deleteOne();
 
@@ -130,7 +120,7 @@ router.post('/:id/share', authMiddleware, async (req, res) => {
       details: { expiresInDays },
     });
 
-    const shareUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/sign/${token}`;
+    const shareUrl = `${process.env.CLIENT_URL}/sign/${token}`;
 
     res.json({ message: 'Share link generated', shareUrl, token, expiresAt: document.shareTokenExpires });
   } catch (err) {
@@ -138,7 +128,7 @@ router.post('/:id/share', authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/docs/public/:token - Public access to a document via share token (no auth)
+// GET /api/docs/public/:token - Public access via share token
 router.get('/public/:token', async (req, res) => {
   try {
     const document = await Document.findOne({ shareToken: req.params.token });
