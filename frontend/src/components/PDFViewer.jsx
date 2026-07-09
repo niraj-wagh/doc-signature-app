@@ -10,12 +10,7 @@ export default function PDFViewer({ fileUrl, onPageRender, children, pageNumber,
 
   const token = localStorage.getItem('accessToken');
 
-  const file = fileUrl ? {
-    url: fileUrl,
-    httpHeaders: {
-      Authorization: `Bearer ${token}`,
-    },
-  } : null;
+ const file = fileUrl ? { url: fileUrl } : null;
 
   return (
     <div className="relative w-full flex flex-col items-center">
