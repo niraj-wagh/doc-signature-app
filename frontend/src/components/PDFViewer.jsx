@@ -5,24 +5,25 @@ import 'react-pdf/dist/Page/TextLayer.css';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
-export default function PDFViewer({ fileUrl, onPageRender, children, pageNumber, setPageNumber, setNumPages }) {
+export default function PDFViewer({ fileUrl, onPageRender, children, pageNumber, setNumPages }) {
   const [width] = useState(700);
 
-  const options = {
+  const token = localStorage.getItem('accessToken');
+
+  const file = fileUrl ? {
+    url: fileUrl,
     httpHeaders: {
-      'Access-Control-Allow-Origin': '*',
+      Authorization: `Bearer ${token}`,
     },
-    withCredentials: false,
-  };
+  } : null;
 
   return (
     <div className="relative w-full flex flex-col items-center">
       <PDFDocument
-        file={{ url: fileUrl, ...options }}
+        file={file}
         onLoadSuccess={(pdf) => setNumPages(pdf.numPages)}
         loading={<p className="text-gray-500 py-12">Loading PDF...</p>}
         error={<p className="text-red-500 py-12">Failed to load PDF — check file permissions</p>}
-        options={options}
       >
         <div className="relative inline-block border border-gray-200 shadow-sm">
           <PDFPage
