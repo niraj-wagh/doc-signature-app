@@ -159,7 +159,7 @@ router.get('/public/:token', async (req, res) => {
 });
 
 // GET /api/docs/:id/file - Proxy PDF from Cloudinary to avoid CORS
-router.get('/proxy/:id', authMiddleware, async (req, res) => {
+router.get('/proxy/:id', async (req, res) => {
   try {
     const document = await Document.findById(req.params.id);
     if (!document) return res.status(404).json({ message: 'Document not found' });
