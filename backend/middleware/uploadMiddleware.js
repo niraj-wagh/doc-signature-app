@@ -14,6 +14,7 @@ const storage = new CloudinaryStorage({
     folder: 'doc-signature-app',
     resource_type: 'raw',
     allowed_formats: ['pdf'],
+    format: 'pdf',
   },
 });
 
@@ -32,3 +33,4 @@ const upload = multer({
 });
 
 module.exports = upload;
+module.exports.cloudinary = cloudinary;
