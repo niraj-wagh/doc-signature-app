@@ -10,11 +10,14 @@ cloudinary.config({
 
 const storage = new CloudinaryStorage({
   cloudinary,
-  params: {
-    folder: 'doc-signature-app',
-    resource_type: 'raw',
-    allowed_formats: ['pdf'],
-    format: 'pdf',
+  params: async (req, file) => {
+    const safeName = file.originalname.replace(/\s+/g, '-').replace(/\.pdf$/i, '');
+    return {
+      folder: 'doc-signature-app',
+      resource_type: 'raw',
+      format: 'pdf',
+      public_id: safeName,
+    };
   },
 });
 
