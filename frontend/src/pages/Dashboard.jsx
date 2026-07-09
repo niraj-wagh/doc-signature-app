@@ -58,9 +58,7 @@ export default function Dashboard() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">My Documents</h1>
-        <Link to="/upload" className="btn-primary">
-          + Upload Document
-        </Link>
+        <Link to="/upload" className="btn-primary">+ Upload Document</Link>
       </div>
 
       <div className="flex gap-2 mb-4">
@@ -90,26 +88,17 @@ export default function Dashboard() {
           {documents.map((doc) => (
             <div key={doc._id} className="card flex flex-col gap-2">
               <div className="flex items-start justify-between">
-                <h3 className="font-semibold truncate" title={doc.originalName}>
-                  {doc.originalName}
-                </h3>
+                <h3 className="font-semibold truncate" title={doc.originalName}>{doc.originalName}</h3>
                 <span className={badgeClass[doc.status]}>{doc.status}</span>
               </div>
-              <p className="text-xs text-gray-400">
-                Uploaded {new Date(doc.createdAt).toLocaleDateString()}
-              </p>
+              <p className="text-xs text-gray-400">Uploaded {new Date(doc.createdAt).toLocaleDateString()}</p>
               <div className="flex flex-wrap gap-2 mt-2">
-                <Link to={`/documents/${doc._id}`} className="btn-secondary text-xs">
-                  Open
-                </Link>
-                <Link to={`/documents/${doc._id}/audit`} className="btn-secondary text-xs">
-                  Audit Trail
-                </Link>
-                <button onClick={() => handleShare(doc._id)} className="btn-secondary text-xs">
-                  Share Link
-                </button>
+                <Link to={`/documents/${doc._id}`} className="btn-secondary text-xs">Open</Link>
+                <Link to={`/documents/${doc._id}/audit`} className="btn-secondary text-xs">Audit Trail</Link>
+                <button onClick={() => handleShare(doc._id)} className="btn-secondary text-xs">Share Link</button>
                 {doc.signedFilePath && (
-                  <a href={`/signed/${doc.signedFilePath}`} target="_blank" rel="noreferrer" className="btn-secondary text-xs">
+                  // signedFilePath is now a full Cloudinary URL
+                  <a href={doc.signedFilePath} target="_blank" rel="noreferrer" className="btn-secondary text-xs">
                     Download Signed
                   </a>
                 )}
@@ -129,17 +118,8 @@ export default function Dashboard() {
             <p className="text-sm text-gray-600 mb-2">Share this link with the signer (valid for 7 days):</p>
             <div className="bg-gray-100 rounded-lg p-2 text-xs break-all mb-4">{shareModal}</div>
             <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(shareModal);
-                }}
-                className="btn-secondary"
-              >
-                Copy
-              </button>
-              <button onClick={() => setShareModal(null)} className="btn-primary">
-                Close
-              </button>
+              <button onClick={() => navigator.clipboard.writeText(shareModal)} className="btn-secondary">Copy</button>
+              <button onClick={() => setShareModal(null)} className="btn-primary">Close</button>
             </div>
           </div>
         </div>
