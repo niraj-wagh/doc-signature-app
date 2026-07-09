@@ -16,10 +16,9 @@ export default function DocumentEditor() {
   const [pageSize, setPageSize] = useState({ width: 700, height: 900 });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
-  const [activeSignature, setActiveSignature] = useState(null); // signature being signed
+  const [activeSignature, setActiveSignature] = useState(null);
   const [finalizing, setFinalizing] = useState(false);
   const [message, setMessage] = useState('');
-  
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -41,18 +40,16 @@ export default function DocumentEditor() {
     fetchData();
   }, [fetchData]);
 
- const fileUrl = document_ ? document_.filePath : null;
+  // filePath is now a full Cloudinary URL — use it directly
+  const fileUrl = document_ ? document_.filePath : null;
 
-  // Signature fields are always pinned to the bottom signing strip of the page.
-  // Only horizontal slot (left / center / right) is configurable, matching how
-  // real paper documents reserve a signature line at the foot of the page.
-  const BOTTOM_Y_PERCENT = 0.86; // fixed vertical anchor near the bottom margin
+  const BOTTOM_Y_PERCENT = 0.86;
   const FIELD_WIDTH = 0.26;
   const FIELD_HEIGHT = 0.07;
 
   const nextBottomSlot = () => {
     const occupied = signatures.filter((s) => s.page === pageNumber).length;
-    const slots = [0.06, 0.37, 0.68]; // left, center, right slots in the bottom strip
+    const slots = [0.06, 0.37, 0.68];
     return slots[occupied % slots.length];
   };
 
@@ -72,8 +69,6 @@ export default function DocumentEditor() {
     }
   };
 
-  // Dragging is constrained to the horizontal axis only — fields slide along
-  // the bottom signing strip but can never leave it vertically.
   const handleDragEnd = (event) => {
     const { active, delta } = event;
     if (!delta.x) return;
@@ -81,21 +76,16 @@ export default function DocumentEditor() {
     setSignatures((prev) =>
       prev.map((sig) => {
         if (sig._id !== active.id) return sig;
-
         const newXPercent = Math.min(Math.max(sig.xPercent + delta.x / pageSize.width, 0), 1 - sig.widthPercent);
-
-        api
-          .post('/signatures', {
-            documentId: id,
-            xPercent: newXPercent,
-            yPercent: BOTTOM_Y_PERCENT,
-            page: sig.page,
-            widthPercent: sig.widthPercent,
-            heightPercent: sig.heightPercent,
-            signerName: sig.signerName,
-          })
-          .catch(() => {});
-
+        api.post('/signatures', {
+          documentId: id,
+          xPercent: newXPercent,
+          yPercent: BOTTOM_Y_PERCENT,
+          page: sig.page,
+          widthPercent: sig.widthPercent,
+          heightPercent: sig.heightPercent,
+          signerName: sig.signerName,
+        }).catch(() => {});
         return { ...sig, xPercent: newXPercent, yPercent: BOTTOM_Y_PERCENT };
       })
     );
@@ -158,34 +148,14 @@ export default function DocumentEditor() {
 
         {numPages > 1 && (
           <div className="flex items-center gap-2 mb-3">
-            <button
-              disabled={pageNumber <= 1}
-              onClick={() => setPageNumber((p) => p - 1)}
-              className="btn-secondary text-sm disabled:opacity-50"
-            >
-              Prev
-            </button>
-            <span className="text-sm">
-              Page {pageNumber} of {numPages}
-            </span>
-            <button
-              disabled={pageNumber >= numPages}
-              onClick={() => setPageNumber((p) => p + 1)}
-              className="btn-secondary text-sm disabled:opacity-50"
-            >
-              Next
-            </button>
+            <button disabled={pageNumber <= 1} onClick={() => setPageNumber((p) => p - 1)} className="btn-secondary text-sm disabled:opacity-50">Prev</button>
+            <span className="text-sm">Page {pageNumber} of {numPages}</span>
+            <button disabled={pageNumber >= numPages} onClick={() => setPageNumber((p) => p + 1)} className="btn-secondary text-sm disabled:opacity-50">Next</button>
           </div>
         )}
 
         <DndContext onDragEnd={handleDragEnd} modifiers={[restrictToHorizontalAxis]}>
-          <PDFViewer
-            fileUrl={fileUrl}
-            pageNumber={pageNumber}
-            setNumPages={setNumPages}
-            onPageRender={onPageRender}
-          >
-            {/* Bottom signing strip — every signature field is anchored to this line */}
+          <PDFViewer fileUrl={fileUrl} pageNumber={pageNumber} setNumPages={setNumPages} onPageRender={onPageRender}>
             <div
               className="absolute left-0 right-0 border-t-2 border-dashed border-seal/40 pointer-events-none flex items-start"
               style={{ top: `${BOTTOM_Y_PERCENT * 100}%` }}
@@ -194,7 +164,6 @@ export default function DocumentEditor() {
                 Signing line
               </span>
             </div>
-
             {pageSignatures.map((sig) => (
               <SignatureField
                 key={sig._id}
@@ -220,7 +189,6 @@ export default function DocumentEditor() {
           <p className="text-xs text-gray-400 mb-3 -mt-1">
             Fields snap to the signing line at the bottom of the page — drag left or right to reposition.
           </p>
-
           {signatures.length === 0 ? (
             <p className="text-xs text-gray-400">No signature fields placed yet.</p>
           ) : (
@@ -229,14 +197,10 @@ export default function DocumentEditor() {
                 <li key={sig._id} className="flex items-center justify-between text-sm border-b pb-2">
                   <div>
                     <p className="font-medium">{sig.signerName}</p>
-                    <p className="text-xs text-gray-400">
-                      Page {sig.page} · {sig.status}
-                    </p>
+                    <p className="text-xs text-gray-400">Page {sig.page} · {sig.status}</p>
                   </div>
                   {sig.status !== 'Signed' && (
-                    <button onClick={() => handleSign(sig)} className="btn-primary text-xs">
-                      Sign
-                    </button>
+                    <button onClick={() => handleSign(sig)} className="btn-primary text-xs">Sign</button>
                   )}
                 </li>
               ))}
@@ -246,16 +210,13 @@ export default function DocumentEditor() {
 
         <div className="card">
           <h3 className="font-semibold mb-2">Finalize</h3>
-          <p className="text-xs text-gray-500 mb-3">
-            Embed all signed fields into a final, immutable PDF.
-          </p>
+          <p className="text-xs text-gray-500 mb-3">Embed all signed fields into a final, immutable PDF.</p>
           <button onClick={handleFinalize} disabled={finalizing} className="btn-primary w-full text-sm">
             {finalizing ? 'Generating...' : 'Generate Signed PDF'}
           </button>
-
           {document_.signedFilePath && (
             <a
-              href={`/signed/${document_.signedFilePath}`}
+              href={document_.signedFilePath}
               target="_blank"
               rel="noreferrer"
               className="btn-secondary w-full text-sm text-center block mt-2"
