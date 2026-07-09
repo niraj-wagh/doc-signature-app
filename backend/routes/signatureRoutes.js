@@ -1,7 +1,10 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+const http = require('http');
 const { PDFDocument, rgb, StandardFonts } = require('pdf-lib');
+const { cloudinary } = require('../middleware/uploadMiddleware');
 const Document = require('../models/Document');
 const Signature = require('../models/Signature');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -9,7 +12,20 @@ const { logAction } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
-// POST /api/signatures - Save a signature position (authenticated owner placing fields)
+// Helper: fetch PDF bytes from a URL (Cloudinary or local)
+function fetchPdfBytes(url) {
+  return new Promise((resolve, reject) => {
+    const client = url.startsWith('https') ? https : http;
+    client.get(url, (res) => {
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
+      res.on('end', () => resolve(Buffer.concat(chunks)));
+      res.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+// POST /api/signatures - Save a signature position
 router.post('/', authMiddleware, async (req, res) => {
   try {
     const { documentId, xPercent, yPercent, page, widthPercent, heightPercent, signerName, signerEmail } = req.body;
@@ -32,8 +48,8 @@ router.post('/', authMiddleware, async (req, res) => {
       xPercent,
       yPercent,
       page,
-      widthPercent: widthPercent || 0.2,
-      heightPercent: heightPercent || 0.08,
+      widthPercent: widthPercent || 0.26,
+      heightPercent: heightPercent || 0.07,
       status: 'Pending',
     });
 
@@ -61,7 +77,7 @@ router.get('/:documentId', async (req, res) => {
   }
 });
 
-// PUT /api/signatures/:id/sign - Signer submits their signature (text or image), works for public token flow too
+// PUT /api/signatures/:id/sign - Signer submits their signature
 router.put('/:id/sign', async (req, res) => {
   try {
     const { signatureText, signatureImage, signerName, signerEmail, action, reason, shareToken } = req.body;
@@ -72,7 +88,6 @@ router.put('/:id/sign', async (req, res) => {
     const document = await Document.findById(signature.documentId);
     if (!document) return res.status(404).json({ message: 'Document not found' });
 
-    // If accessed via public share token, validate it
     if (shareToken) {
       if (document.shareToken !== shareToken) {
         return res.status(403).json({ message: 'Invalid share token' });
@@ -120,7 +135,6 @@ router.put('/:id/sign', async (req, res) => {
       details: { signatureId: signature._id },
     });
 
-    // Check if all signatures for this document are signed -> update doc status
     const allSignatures = await Signature.find({ documentId: document._id });
     const allSigned = allSignatures.every((s) => s.status === 'Signed');
     if (allSigned) {
@@ -134,7 +148,7 @@ router.put('/:id/sign', async (req, res) => {
   }
 });
 
-// POST /api/signatures/finalize - Embed signatures into the PDF and generate the final signed file
+// POST /api/signatures/finalize - Embed signatures into PDF and upload to Cloudinary
 router.post('/finalize', authMiddleware, async (req, res) => {
   try {
     const { documentId } = req.body;
@@ -152,15 +166,10 @@ router.post('/finalize', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'No signed signature fields found for this document' });
     }
 
-    const sourcePath = path.join(__dirname, '..', 'uploads', document.filePath);
-    if (!fs.existsSync(sourcePath)) {
-      return res.status(404).json({ message: 'Source PDF file not found on server' });
-    }
-
-    const existingPdfBytes = fs.readFileSync(sourcePath);
+    // Fetch PDF bytes from Cloudinary URL
+    const existingPdfBytes = await fetchPdfBytes(document.filePath);
     const pdfDoc = await PDFDocument.load(existingPdfBytes);
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.HelveticaOblique);
-
     const pages = pdfDoc.getPages();
 
     for (const sig of signatures) {
@@ -169,7 +178,6 @@ router.post('/finalize', authMiddleware, async (req, res) => {
       const { width, height } = pdfPage.getSize();
 
       const x = sig.xPercent * width;
-      // PDF coordinate origin is bottom-left; UI coordinates are typically top-left
       const y = height - sig.yPercent * height - sig.heightPercent * height;
       const boxWidth = sig.widthPercent * width;
       const boxHeight = sig.heightPercent * height;
@@ -178,20 +186,13 @@ router.post('/finalize', authMiddleware, async (req, res) => {
         try {
           const base64Data = sig.signatureImage.replace(/^data:image\/\w+;base64,/, '');
           const imageBytes = Buffer.from(base64Data, 'base64');
-
           let embeddedImage;
           if (sig.signatureImage.includes('image/png')) {
             embeddedImage = await pdfDoc.embedPng(imageBytes);
           } else {
             embeddedImage = await pdfDoc.embedJpg(imageBytes);
           }
-
-          pdfPage.drawImage(embeddedImage, {
-            x,
-            y,
-            width: boxWidth,
-            height: boxHeight,
-          });
+          pdfPage.drawImage(embeddedImage, { x, y, width: boxWidth, height: boxHeight });
         } catch (imgErr) {
           console.error('Error embedding signature image:', imgErr.message);
         }
@@ -205,25 +206,32 @@ router.post('/finalize', authMiddleware, async (req, res) => {
         });
       }
 
-      // Draw a timestamp caption under the signature
       pdfPage.drawText(
         `Signed by ${sig.signerName} on ${sig.signedAt ? sig.signedAt.toISOString() : new Date().toISOString()}`,
-        {
-          x,
-          y: Math.max(y - 10, 5),
-          size: 6,
-          font: helveticaFont,
-          color: rgb(0.4, 0.4, 0.4),
-        }
+        { x, y: Math.max(y - 10, 5), size: 6, font: helveticaFont, color: rgb(0.4, 0.4, 0.4) }
       );
     }
 
     const signedPdfBytes = await pdfDoc.save();
-    const signedFileName = `signed-${document._id}-${Date.now()}.pdf`;
-    const signedFilePath = path.join(__dirname, '..', 'signed', signedFileName);
-    fs.writeFileSync(signedFilePath, signedPdfBytes);
 
-    document.signedFilePath = signedFileName;
+    // Upload signed PDF to Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          folder: 'doc-signature-app/signed',
+          resource_type: 'raw',
+          format: 'pdf',
+          public_id: `signed-${documentId}-${Date.now()}`,
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      stream.end(Buffer.from(signedPdfBytes));
+    });
+
+    document.signedFilePath = uploadResult.secure_url;
     document.status = 'Signed';
     await document.save();
 
@@ -232,13 +240,13 @@ router.post('/finalize', authMiddleware, async (req, res) => {
       action: 'finalized',
       actor: req.user.email,
       req,
-      details: { signedFileName, signatureCount: signatures.length },
+      details: { signedUrl: uploadResult.secure_url, signatureCount: signatures.length },
     });
 
     res.json({
       message: 'Signed PDF generated successfully',
-      signedFilePath: signedFileName,
-      downloadUrl: `/signed/${signedFileName}`,
+      signedFilePath: uploadResult.secure_url,
+      downloadUrl: uploadResult.secure_url,
       document,
     });
   } catch (err) {
